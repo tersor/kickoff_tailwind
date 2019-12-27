@@ -13,6 +13,13 @@ def add_gems
   gem 'devise', '~> 4.7', '>= 4.7.1'
   gem 'friendly_id', '~> 5.3'
   gem 'sidekiq', '~> 6.0', '>= 6.0.1'
+  gem 'anycable-rails'
+end
+
+def add_actioncable
+  # Configure Action Cable
+  environment "config.action_cable.url = 'ws://localhost:3334/cable'", env: 'development'
+  environment "config.action_cable.url = 'wss://ws.example.com/cable'", env: 'production'
 end
 
 def add_users
@@ -20,8 +27,7 @@ def add_users
   generate "devise:install"
 
   # Configure Devise
-  environment "config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
-              env: 'development'
+  environment "config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }", env: 'development'
 
   route "root to: 'home#index'"
 
@@ -37,16 +43,20 @@ end
 
 def copy_templates
   directory "app", force: true
+  #gsub_file 'config/database.yml', "username: root\n  password:", "username: dbuser\n  password: <%= ENV['METALAB_DATABASE_PASSWORD'] %>"
+  gsub_file 'config/database.yml', "development:\n  adapter: async", "development:\n  adapter: any_cable"
+  gsub_file 'config/database.yml', "production:\n  adapter: redis", "production:\n  adapter: any_cable"
+
 end
 
 def add_tailwind
   run "yarn add tailwindcss"
-  run "mkdir app/javascript/stylesheets"
+  #run "mkdir app/javascript/stylesheets"
   append_to_file("app/javascript/packs/application.js", 'import "stylesheets/application"')
   inject_into_file("./postcss.config.js",
   "var tailwindcss = require('tailwindcss');\n",  before: "module.exports")
   inject_into_file("./postcss.config.js", "\n    tailwindcss('./app/javascript/stylesheets/tailwind.config.js'),", after: "plugins: [")
-  run "mkdir app/javascript/stylesheets/components"
+  #run "mkdir app/javascript/stylesheets/components"
 end
 
 # Remove Application CSS
@@ -83,7 +93,9 @@ source_paths
 add_gems
 
 after_bundle do
+  run "spring stop"
   add_users
+  add_actioncable
   remove_app_css
   add_sidekiq
   add_foreman
