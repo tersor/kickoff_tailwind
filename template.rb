@@ -87,13 +87,17 @@ def add_friendly_id
   generate "friendly_id"
 end
 
+def stop_spring
+  run "spring stop"
+end
+
 # Main setup
 source_paths
 
 add_gems
 
 after_bundle do
-  run "spring stop"
+  stop_spring
   add_users
   add_actioncable
   remove_app_css
